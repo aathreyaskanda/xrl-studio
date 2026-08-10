@@ -6,7 +6,14 @@ from typing import Any
 
 from utils.config import get_gemini_api_key, is_gemini_configured
 
-GEMINI_MODEL_NAME = "gemini-1.5-flash"
+GEMINI_MODEL_NAME = "gemini-3.6-flash"
+GEMINI_MODEL_FALLBACKS = [
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-1.5-flash-latest",
+    "gemini-2.0-flash",
+    "gemini-flash-latest",
+]
 
 SUMMARY_PROMPT_TEMPLATE = """\
 You are an assistant explaining a reinforcement learning agent's behaviour
@@ -42,14 +49,50 @@ def generate_summary(context: dict[str, Any]) -> str:
         The generated summary text.
 
     Raises:
-        RuntimeError: if no Gemini API key is configured.
-
-    TODO(reports): implement the actual API call using
-    ``google-generativeai``. See PROJECT_PLAN.md, Phase 8.
+        RuntimeError: if no Gemini API key is configured or API call fails.
     """
     if not is_gemini_configured():
         raise RuntimeError(
             "No Gemini API key configured. Set GEMINI_API_KEY in "
             ".streamlit/secrets.toml or as an environment variable."
         )
-    raise NotImplementedError("generate_summary is not yet implemented.")
+
+    import google.generativeai as genai
+
+    api_key = get_gemini_api_key()
+    genai.configure(api_key=api_key)
+
+    prompt = build_prompt(context)
+
+    last_error: Exception | None = None
+
+    # Try preferred candidates
+    for model_name in GEMINI_MODEL_FALLBACKS:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            if hasattr(response, "text") and response.text:
+                return response.text.strip()
+        except Exception as error:
+            last_error = error
+            continue
+
+    # Fallback to dynamic model discovery if configured candidates fail
+    try:
+        for m in genai.list_models():
+            if "generateContent" in getattr(m, "supported_generation_methods", []):
+                model_name = m.name.replace("models/", "")
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content(prompt)
+                    if hasattr(response, "text") and response.text:
+                        return response.text.strip()
+                except Exception as error:
+                    last_error = error
+                    continue
+    except Exception:
+        pass
+
+    raise RuntimeError(f"Gemini API request failed: {last_error}")
+
+

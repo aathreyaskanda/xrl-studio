@@ -23,11 +23,7 @@ class EpisodeLog:
 
 
 class TrainingLogger:
-    """Accumulates :class:`EpisodeLog` entries across a training run.
-
-    TODO(rl): populate during ``QLearningAgent.train``.
-    TODO(reports): wire ``export_csv`` up for the Download Report step.
-    """
+    """Accumulates :class:`EpisodeLog` entries across a training run."""
 
     def __init__(self) -> None:
         self.episodes: list[EpisodeLog] = []

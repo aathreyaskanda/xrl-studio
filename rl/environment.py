@@ -7,7 +7,7 @@ environment mechanics. See PROJECT_PLAN.md, Phase 3.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import gymnasium as gym
 import numpy as np

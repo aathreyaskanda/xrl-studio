@@ -24,11 +24,7 @@ class QLearningConfig:
 
 
 class QLearningAgent:
-    """Epsilon-greedy tabular Q-learning agent over a discrete state space.
-
-    TODO(rl): implement ``select_action``, ``update``, and ``train``.
-    See PROJECT_PLAN.md, Phase 3.
-    """
+    """Epsilon-greedy tabular Q-learning agent over a discrete state space."""
 
     def __init__(self, n_states: int, n_actions: int, config: QLearningConfig | None = None) -> None:
         self.n_states = n_states

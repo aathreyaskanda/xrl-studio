@@ -104,9 +104,10 @@ class GridExtractor:
         preview = np.tile(_PREVIEW_COLORS["free"], (rows * cell_size, cols * cell_size, 1))
 
         def paint(row: int, col: int, color: np.ndarray) -> None:
-            r0, r1 = row * cell_size, (row + 1) * cell_size
-            c0, c1 = col * cell_size, (col + 1) * cell_size
-            preview[r0:r1, c0:c1] = color
+            if 0 <= row < rows and 0 <= col < cols:
+                r0, r1 = row * cell_size, (row + 1) * cell_size
+                c0, c1 = col * cell_size, (col + 1) * cell_size
+                preview[r0:r1, c0:c1] = color
 
         for row in range(rows):
             for col in range(cols):

@@ -8,11 +8,15 @@ from rl.training_logger import TrainingLogger
 
 
 def compute_state_revisit_frequency(logger: TrainingLogger, grid_shape: tuple[int, int]) -> np.ndarray:
-    """Count visits per cell across all episodes.
+    """Count visits per cell across all episodes."""
+    counts = np.zeros(grid_shape, dtype=int)
+    n_cols = grid_shape[1]
 
-    Returns:
-        An array of shape ``grid_shape`` with per-cell visit counts.
+    for ep in logger.get_logs():
+        for state in ep.visited_states:
+            row, col = divmod(state, n_cols)
+            if 0 <= row < grid_shape[0] and 0 <= col < grid_shape[1]:
+                counts[row, col] += 1
 
-    TODO(analytics): implement.
-    """
-    raise NotImplementedError("compute_state_revisit_frequency is not yet implemented.")
+    return counts
+
