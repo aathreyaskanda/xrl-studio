@@ -1,0 +1,25 @@
+# Core application
+streamlit>=1.36
+
+# RL engine
+gymnasium>=0.29
+numpy>=1.26
+
+# Computer vision (occupancy grid extraction)
+opencv-python-headless>=4.9
+Pillow>=10.3
+
+# Analytics / data handling
+pandas>=2.2
+
+# Visualization
+plotly>=5.20
+matplotlib>=3.8
+kaleido>=0.2          # static (PNG) export of Plotly figures, used by reports/export_utils.py
+
+# Reporting
+reportlab>=4.1
+
+# LLM summary (Gemini Flash)
+google-generativeai>=0.5
+python-dotenv>=1.0     # optional: load GEMINI_API_KEY from a local .env file
