@@ -15,12 +15,15 @@ from utils.constants import CHART_TYPES
 
 def plot_reward_vs_episode(logger: TrainingLogger, grid: np.ndarray) -> go.Figure:
     """Total reward per episode over training."""
+    # Extract episode numbers and total cumulative rewards per episode
     episodes = [ep.episode for ep in logger.get_logs()]
     rewards = [ep.total_reward for ep in logger.get_logs()]
 
+    # Calculate 10-episode rolling average line to smooth reward variance trends
     rolling = pd.Series(rewards).rolling(10, min_periods=1).mean()
 
     fig = go.Figure()
+    # Faint line trace for raw per-episode total rewards
     fig.add_trace(
         go.Scatter(
             x=episodes,
@@ -30,6 +33,7 @@ def plot_reward_vs_episode(logger: TrainingLogger, grid: np.ndarray) -> go.Figur
             line={"color": "rgba(99, 110, 250, 0.4)", "width": 1},
         )
     )
+    # Solid line trace for 10-episode rolling average
     fig.add_trace(
         go.Scatter(
             x=episodes,
@@ -55,6 +59,7 @@ def plot_episode_length(logger: TrainingLogger, grid: np.ndarray) -> go.Figure:
     episodes = [ep.episode for ep in logger.get_logs()]
     steps = [ep.steps for ep in logger.get_logs()]
 
+    # Calculate 10-episode rolling average step count
     rolling = pd.Series(steps).rolling(10, min_periods=1).mean()
 
     fig = go.Figure()
@@ -91,6 +96,7 @@ def plot_coverage_progress(logger: TrainingLogger, grid: np.ndarray) -> go.Figur
     """Cumulative grid coverage fraction over training."""
     episodes = [ep.episode for ep in logger.get_logs()]
     navigable_count = int(np.count_nonzero(grid != OBSTACLE)) if grid is not None else 100
+    # Convert coverage ratio to percentage values (0-100%)
     cov_series = coverage_over_time(logger, navigable_count) * 100.0
 
     fig = go.Figure()
@@ -143,6 +149,7 @@ def plot_exploration_rate(logger: TrainingLogger, grid: np.ndarray) -> go.Figure
 def plot_exploit_score(logger: TrainingLogger, grid: np.ndarray) -> go.Figure:
     """Reward-concentration ("exploit") score over training."""
     episodes = [ep.episode for ep in logger.get_logs()]
+    # Sum positive rewards earned per episode
     pos_rewards = [sum(r for r in ep.rewards if r > 0) for ep in logger.get_logs()]
     rolling = pd.Series(pos_rewards).rolling(10, min_periods=1).mean()
 
@@ -177,6 +184,7 @@ def plot_exploit_score(logger: TrainingLogger, grid: np.ndarray) -> go.Figure:
 
 def plot_state_visit_distribution(logger: TrainingLogger, grid: np.ndarray) -> go.Figure:
     """Histogram of how many times each state was visited."""
+    # Compute visit matrix and filter out obstacle cells using boolean mask
     visit_matrix = compute_state_revisit_frequency(logger, grid.shape)
     free_mask = (grid != OBSTACLE)
     counts = visit_matrix[free_mask].flatten()
@@ -213,4 +221,3 @@ CHART_RENDERERS = {
 }
 
 assert set(CHART_RENDERERS) == set(CHART_TYPES), "Chart renderers must match CHART_TYPES."
-

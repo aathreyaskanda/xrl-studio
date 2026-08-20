@@ -13,31 +13,39 @@ import numpy as np
 
 def new_run_id() -> str:
     """Generate a unique, sortable identifier for an analysis run."""
+    # Create UTC timestamp in YYYYMMDD-HHMMSS format for chronological sorting
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    # Append 8-character hex slice of a random UUID4 to prevent collisions across simultaneous runs
     return f"{timestamp}-{uuid.uuid4().hex[:8]}"
 
 
 def save_json(data: dict[str, Any], path: Path) -> Path:
     """Write a dict to disk as pretty-printed JSON, creating parents as needed."""
+    # Ensure directory tree exists prior to file stream opening
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as json_file:
+        # indent=2 ensures human readability; default=str safely serializes non-standard objects like Path or datetimes
         json.dump(data, json_file, indent=2, default=str)
     return path
 
 
 def load_json(path: Path) -> dict[str, Any]:
     """Read a JSON file back into a dict."""
+    # Parse UTF-8 encoded JSON text directly into a dictionary
     with open(path, "r", encoding="utf-8") as json_file:
         return json.load(json_file)
 
 
 def save_grid_csv(grid: np.ndarray, path: Path) -> Path:
     """Persist an occupancy grid as CSV, for export/debugging."""
+    # Ensure export directory exists before saving
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Save integer grid matrix using comma separation without floating point decimals (%d)
     np.savetxt(path, grid, delimiter=",", fmt="%d")
     return path
 
 
 def load_grid_csv(path: Path) -> np.ndarray:
     """Load an occupancy grid previously saved with :func:`save_grid_csv`."""
+    # Read comma-delimited text back into a 2D integer NumPy array
     return np.loadtxt(path, delimiter=",", dtype=int)

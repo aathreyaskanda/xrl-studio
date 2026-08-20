@@ -8,7 +8,6 @@ import numpy as np
 
 from rl.training_logger import TrainingLogger
 
-
 from analytics.coverage import coverage_over_time
 from analytics.loop_detection import detect_loops
 from analytics.reward_concentration import compute_reward_concentration
@@ -20,11 +19,17 @@ from rl.environment import OBSTACLE
 class RewardHackingReport:
     """Consolidated output of the Reward Hacking Detection step."""
 
+    # Flag indicating if reward hacking behavior patterns were detected
     is_hacking_suspected: bool = False
+    # Final cumulative grid coverage percentage (0.0 to 1.0)
     coverage_score: float = 0.0
+    # Detailed reward concentration metrics dictionary (Gini, top 10% share, etc.)
     reward_concentration: dict = field(default_factory=dict)
+    # List of LoopEvent instances detected across training run
     loop_events: list = field(default_factory=list)
+    # 2D matrix of cell revisit counts
     revisit_grid: np.ndarray | None = None
+    # Human-readable diagnostic evidence bullet notes
     notes: list[str] = field(default_factory=list)
 
 
@@ -34,16 +39,17 @@ def detect_reward_hacking(
     occupancy_grid: np.ndarray | None = None,
 ) -> RewardHackingReport:
     """Run all analytics detectors and combine them into one report."""
+    # Count total navigable (non-obstacle) cells for accurate coverage calculation
     if occupancy_grid is not None:
         navigable_count = int(np.count_nonzero(occupancy_grid != OBSTACLE))
     else:
         navigable_count = grid_shape[0] * grid_shape[1]
 
-    # 1. Coverage
+    # 1. Compute Coverage Progress
     cov_series = coverage_over_time(logger, navigable_count)
     final_coverage = float(cov_series[-1]) if len(cov_series) > 0 else 0.0
 
-    # 2. Loop Detection
+    # 2. Run Loop Detection Analysis across all episode trajectories
     all_loops = []
     episodes_with_loops_set = set()
     for ep in logger.get_logs():
@@ -55,18 +61,18 @@ def detect_reward_hacking(
     total_loop_events = len(all_loops)
     episodes_with_loops = len(episodes_with_loops_set)
 
-    # 3. Reward Concentration
+    # 3. Compute Reward Concentration (Gini coefficient & top 10% share)
     conc = compute_reward_concentration(logger)
     gini = conc.get("gini_coefficient", 0.0)
     top_10pct_share = conc.get("top_10pct_share", 0.0)
 
-    # 4. State Revisit
+    # 4. Compute State Revisit Counts Matrix
     revisit_grid = compute_state_revisit_frequency(logger, grid_shape)
     max_revisits = int(np.max(revisit_grid)) if revisit_grid.size > 0 else 0
 
     notes: list[str] = []
 
-    # Threshold checks for reward hacking indicators
+    # Threshold checks for reward hacking indicators:
     # Indicator 1: High Reward Concentration (Gini >= 0.60 or Top 10% share >= 0.60)
     if gini >= 0.60 or top_10pct_share >= 0.60:
         notes.append(
@@ -97,8 +103,10 @@ def detect_reward_hacking(
             "A single location dominates agent trajectory time."
         )
 
+    # Flag hacking if any threshold rule produced a warning note
     is_hacking_suspected = len(notes) > 0
 
+    # Add clean summary note if no hacking indicator was triggered
     if not is_hacking_suspected:
         notes.append(
             "No reward hacking patterns detected. Trajectory coverage is healthy, loop frequency is low, "
@@ -113,4 +121,3 @@ def detect_reward_hacking(
         revisit_grid=revisit_grid,
         notes=notes,
     )
-

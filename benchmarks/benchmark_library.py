@@ -29,7 +29,9 @@ class BenchmarkLayout:
         if self.grid is not None:
             return self.grid
         rows, cols = self.grid_shape
+        # Construct zero matrix for free cells
         grid = np.zeros((rows, cols), dtype=int)
+        # Populate pre-configured obstacle cells
         for r, c in self.obstacle_cells:
             if 0 <= r < rows and 0 <= c < cols:
                 grid[r, c] = OBSTACLE
@@ -49,11 +51,12 @@ class BenchmarkLayout:
 
 
 def _build_warehouse_benchmarks() -> list[BenchmarkLayout]:
+    """Build pre-configured warehouse inspection benchmarks."""
     # Layout 1: Standard Aisles (20x20)
     obs_1: set[tuple[int, int]] = set()
     for col in (3, 4, 7, 8, 11, 12, 15, 16):
         for row in range(2, 18):
-            if row not in (9, 10):  # Cross aisle
+            if row not in (9, 10):  # Leave horizontal cross aisle open
                 obs_1.add((row, col))
     haz_1 = {(5, 2), (14, 10), (5, 9), (14, 17)}
 
@@ -90,9 +93,10 @@ def _build_warehouse_benchmarks() -> list[BenchmarkLayout]:
 
 
 def _build_hospital_benchmarks() -> list[BenchmarkLayout]:
+    """Build pre-configured hospital delivery benchmarks."""
     # Layout 1: Ward Floor Plan (20x20)
     obs_1: set[tuple[int, int]] = set()
-    # Horizontal corridor walls
+    # Horizontal corridor walls with doorways
     for c in range(20):
         if c != 10:
             obs_1.add((6, c))
@@ -147,6 +151,7 @@ def _build_hospital_benchmarks() -> list[BenchmarkLayout]:
 
 
 def _build_security_benchmarks() -> list[BenchmarkLayout]:
+    """Build pre-configured security patrol benchmarks."""
     # Layout 1: Office Cubicle Floor (20x20)
     obs_1: set[tuple[int, int]] = set()
     cubicle_top_lefts = [
@@ -193,6 +198,7 @@ def _build_security_benchmarks() -> list[BenchmarkLayout]:
 
 
 def _build_industrial_benchmarks() -> list[BenchmarkLayout]:
+    """Build pre-configured industrial plant benchmarks."""
     # Layout 1: Refinery Plant (20x20)
     obs_1: set[tuple[int, int]] = set()
     machine_blocks = [
@@ -238,6 +244,7 @@ def _build_industrial_benchmarks() -> list[BenchmarkLayout]:
 
 
 def _build_rescue_benchmarks() -> list[BenchmarkLayout]:
+    """Build pre-configured search and rescue benchmarks."""
     # Layout 1: Collapsed Building (20x20)
     obs_1: set[tuple[int, int]] = {
         (3, 3), (3, 4), (4, 3), (8, 7), (8, 8), (9, 8),
@@ -281,7 +288,7 @@ def _build_rescue_benchmarks() -> list[BenchmarkLayout]:
     ]
 
 
-# Registered benchmark layouts, keyed by mission.
+# Registered benchmark layouts dictionary, indexed by mission profile key
 BENCHMARK_LIBRARY: dict[str, list[BenchmarkLayout]] = {
     "warehouse_inspection": _build_warehouse_benchmarks(),
     "hospital_delivery": _build_hospital_benchmarks(),
@@ -308,4 +315,3 @@ def get_benchmark(mission_key: str, name: str) -> BenchmarkLayout:
         if layout.name == name:
             return layout
     raise KeyError(f"No benchmark named {name!r} for mission {mission_key!r}")
-

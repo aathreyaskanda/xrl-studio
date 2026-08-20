@@ -88,7 +88,7 @@ class TrajectoryReplay:
             )
         )
 
-        # Path history
+        # Trace trajectory path history up to current step
         path_states = self.episode_log.visited_states[: step + 1]
         path_coords = [divmod(st, cols) for st in path_states]
         path_rows = [p[0] for p in path_coords]
@@ -107,7 +107,7 @@ class TrajectoryReplay:
             )
         )
 
-        # Start position
+        # Highlight start cell position marker
         start_r, start_c = divmod(self.episode_log.visited_states[0], cols)
         fig.add_trace(
             go.Scatter(
@@ -119,7 +119,7 @@ class TrajectoryReplay:
             )
         )
 
-        # Current agent position
+        # Highlight current agent position marker
         curr_r, curr_c = path_coords[-1]
         fig.add_trace(
             go.Scatter(
@@ -127,7 +127,7 @@ class TrajectoryReplay:
                 y=[curr_r],
                 mode="markers+text",
                 marker=dict(size=18, color="#f59e0b", symbol="circle"),
-                text=["🤖"],
+                text=["A"],
                 textposition="middle center",
                 name="Agent",
             )
@@ -146,4 +146,3 @@ class TrajectoryReplay:
             margin=dict(l=40, r=40, t=60, b=40),
         )
         return fig
-

@@ -1,37 +1,51 @@
+import numpy as np
 import pandas as pd
 import streamlit as st
 
 from analytics.hacking_detector import detect_reward_hacking
-from utils.session_state import init_session_state, mark_step_complete, require_step
+from rl.training_logger import TrainingLogger
+from utils.session_state import init_session_state, mark_step_complete, require_step, safe_page_link
 
+# Initialize session state schema defaults
 init_session_state()
 
-st.title("🚨 Reward Hacking Detection")
+st.title("Reward Hacking Detection")
 
+# Guard page behind prerequisite behaviour_analysis step requirement
 if not require_step("behaviour_analysis"):
     st.stop()
 
-logger = st.session_state["training_logs"]
-grid = st.session_state["occupancy_grid"]
+logger = st.session_state.get("training_logs")
+grid = st.session_state.get("occupancy_grid")
+if logger is None or grid is None:
+    st.info("Grid or training logs not found. Please complete training first.")
+    st.stop()
+    if logger is None:
+        logger = TrainingLogger()
+    if grid is None:
+        grid = np.zeros((1, 1), dtype=int)
 
 report = st.session_state.get("hacking_report")
 
+# Run reward-hacking analytical detection rules if report is not already in session state
 if report is None:
     report = detect_reward_hacking(logger, grid.shape, occupancy_grid=grid)
     st.session_state["hacking_report"] = report
     mark_step_complete("hacking_detection")
 
-if st.button("Re-run Detection Analysis", type="secondary", icon="🔄"):
+# Manual re-run trigger button
+if st.button("Re-run Detection Analysis", type="secondary", icon=":material/refresh:"):
     report = detect_reward_hacking(logger, grid.shape, occupancy_grid=grid)
     st.session_state["hacking_report"] = report
     mark_step_complete("hacking_detection")
     st.rerun()
 
+# Display verdict banner
 if report is not None:
     if report.is_hacking_suspected:
-        st.error("⚠️ **Verdict: REWARD HACKING SUSPECTED**")
+        st.error("**Verdict: REWARD HACKING SUSPECTED**")
     else:
-        st.success("✅ **Verdict: CLEAN RUN — NO REWARD HACKING DETECTED**")
+        st.success("**Verdict: CLEAN RUN — NO REWARD HACKING DETECTED**")
 
     st.subheader("Diagnostic Evidence & Key Indicators")
     c1, c2, c3 = st.columns(3)
@@ -39,14 +53,11 @@ if report is not None:
     c2.metric("Gini Concentration", f"{report.reward_concentration.get('gini_coefficient', 0.0):.3f}")
     c3.metric("Total Loop Events", f"{len(report.loop_events)}")
 
-    st.markdown("### 📋 Automated Inspection Findings")
+    st.markdown("### Automated Inspection Findings")
     for note in report.notes:
-        if report.is_hacking_suspected:
-            st.write(f"- ⚠️ {note}")
-        else:
-            st.write(f"- ✅ {note}")
+        st.write(f"- {note}")
 
-    with st.expander("🔍 Detailed Analytical Evidence"):
+    with st.expander("Detailed Analytical Evidence"):
         st.write("**Reward Concentration Summary:**", report.reward_concentration)
         if report.loop_events:
             st.write("**Detected Loop Events:**")
@@ -63,9 +74,10 @@ if report is not None:
                 use_container_width=True,
             )
 
-    with st.expander("⚔️ Normal vs. Flawed Reward Comparison (Side-by-Side Analysis)"):
+    # Side-by-side comparison expander: compares a balanced vs. flawed reward function simulation on the current grid
+    with st.expander("Normal vs. Flawed Reward Comparison (Side-by-Side Analysis)"):
         st.caption("Compare how a balanced reward setup vs. a flawed reward function behaves under the same grid layout.")
-        if st.button("Run Side-by-Side Comparison", icon="⚖️"):
+        if st.button("Run Side-by-Side Comparison", icon=":material/compare_arrows:"):
             from rl.environment import EnvironmentConfig, GridWorldEnv
             from rl.q_learning import QLearningAgent, QLearningConfig
             from rl.reward_presets import RewardConfig
@@ -104,20 +116,20 @@ if report is not None:
             col_norm, col_flaw = st.columns(2)
 
             with col_norm:
-                st.subheader("🟢 Normal (Balanced Reward)")
+                st.subheader("Normal (Balanced Reward)")
                 if report_normal.is_hacking_suspected:
-                    st.warning("⚠️ Hacking Flagged")
+                    st.warning("Hacking Flagged")
                 else:
-                    st.success("✅ Clean Run")
+                    st.success("Clean Run")
                 st.metric("Coverage Score", f"{report_normal.coverage_score:.1%}")
                 st.metric("Gini Concentration", f"{report_normal.reward_concentration.get('gini_coefficient', 0.0):.3f}")
                 fig_norm = plot_reward_heatmap(grid, logger_normal)
                 st.plotly_chart(fig_norm, use_container_width=True)
 
             with col_flaw:
-                st.subheader("🔴 Flawed (Hacked Reward)")
+                st.subheader("Flawed (Hacked Reward)")
                 if report_flawed.is_hacking_suspected:
-                    st.error("⚠️ REWARD HACKING SUSPECTED")
+                    st.error("REWARD HACKING SUSPECTED")
                 else:
                     st.info("Clean Run")
                 st.metric("Coverage Score", f"{report_flawed.coverage_score:.1%}")
@@ -125,11 +137,9 @@ if report is not None:
                 fig_flaw = plot_reward_heatmap(grid, logger_flawed)
                 st.plotly_chart(fig_flaw, use_container_width=True)
 
-
     st.divider()
-    st.page_link(
+    safe_page_link(
         "pages/12_Explainability_Dashboard.py",
         label="Continue to Explainability Dashboard",
-        icon="📊",
+        icon=":material/monitoring:",
     )
-

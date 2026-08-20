@@ -15,10 +15,15 @@ from rl.reward_presets import RewardConfig, get_reward_preset
 class MissionProfile:
     """Display metadata and reward wiring for one mission type."""
 
+    # Unique string key identifier for mission profile lookup
     key: str
+    # Human-readable title string displayed in UI radio selections and titles
     display_name: str
+    # Description text summarizing mission context
     description: str
+    # Material Symbol name string used for mission iconography
     icon: str
+    # Entity label overrides
     agent_label: str
     goal_label: str
     obstacle_label: str
@@ -30,12 +35,13 @@ class MissionProfile:
         return get_reward_preset(self.key)
 
 
+# Registry mapping mission keys to their configured MissionProfile instances
 MISSION_PROFILES: dict[str, MissionProfile] = {
     "warehouse_inspection": MissionProfile(
         key="warehouse_inspection",
         display_name="Warehouse Inspection",
         description="An autonomous agent inspects shelving rows in a warehouse.",
-        icon="📦",
+        icon=":material/inventory_2:",
         agent_label="Inspector Robot",
         goal_label="Inspection Point",
         obstacle_label="Shelf",
@@ -45,7 +51,7 @@ MISSION_PROFILES: dict[str, MissionProfile] = {
         key="hospital_delivery",
         display_name="Hospital Delivery",
         description="An autonomous agent delivers supplies between hospital wards.",
-        icon="🏥",
+        icon=":material/local_hospital:",
         agent_label="Delivery Robot",
         goal_label="Ward",
         obstacle_label="Wall",
@@ -55,7 +61,7 @@ MISSION_PROFILES: dict[str, MissionProfile] = {
         key="indoor_security_patrol",
         display_name="Indoor Security Patrol",
         description="An autonomous agent patrols an indoor facility for security coverage.",
-        icon="🛡️",
+        icon=":material/security:",
         agent_label="Patrol Robot",
         goal_label="Checkpoint",
         obstacle_label="Barrier",
@@ -65,7 +71,7 @@ MISSION_PROFILES: dict[str, MissionProfile] = {
         key="industrial_facility_inspection",
         display_name="Industrial Facility Inspection",
         description="An autonomous agent inspects equipment across an industrial facility.",
-        icon="🏭",
+        icon=":material/factory:",
         agent_label="Inspection Drone",
         goal_label="Equipment Station",
         obstacle_label="Machinery",
@@ -75,7 +81,7 @@ MISSION_PROFILES: dict[str, MissionProfile] = {
         key="search_rescue",
         display_name="Search & Rescue",
         description="An autonomous agent searches a disaster site for survivors.",
-        icon="🚨",
+        icon=":material/emergency:",
         agent_label="Rescue Robot",
         goal_label="Survivor Location",
         obstacle_label="Debris",

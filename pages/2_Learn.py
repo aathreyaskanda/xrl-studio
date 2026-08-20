@@ -3,11 +3,12 @@
 import streamlit as st
 
 from benchmarks.mission_profiles import list_mission_profiles
-from utils.session_state import init_session_state
+from utils.session_state import init_session_state, safe_page_link
 
+# Initialize session state schema defaults
 init_session_state()
 
-st.title("📖 Learn: Reward Hacking in Reinforcement Learning")
+st.title("Learn: Reward Hacking in Reinforcement Learning")
 
 st.markdown(
     """
@@ -35,10 +36,11 @@ which makes it easy to compare behaviour across missions.
 """
 )
 
+# Render available pre-configured mission profiles catalog in expanders
 st.subheader("Mission Profiles")
 for profile in list_mission_profiles():
-    with st.expander(f"{profile.icon} {profile.display_name}"):
+    with st.expander(profile.display_name):
         st.write(profile.description)
 
 st.divider()
-st.page_link("pages/3_New_Analysis.py", label="Start a New Analysis", icon="🆕")
+safe_page_link("pages/3_New_Analysis.py", label="Start a New Analysis", icon=":material/add_circle:")

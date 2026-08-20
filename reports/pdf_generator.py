@@ -30,8 +30,10 @@ class ReportGenerator:
 
     def __init__(self, context: dict[str, Any]) -> None:
         self.context = context
+        # Retrieve ReportLab default sample stylesheet
         self.styles = getSampleStyleSheet()
 
+        # Custom title typography style
         self.title_style = ParagraphStyle(
             "ReportTitle",
             parent=self.styles["Heading1"],
@@ -41,6 +43,7 @@ class ReportGenerator:
             spaceAfter=12,
         )
 
+        # Heading 2 section style
         self.h2_style = ParagraphStyle(
             "ReportH2",
             parent=self.styles["Heading2"],
@@ -51,6 +54,7 @@ class ReportGenerator:
             spaceAfter=8,
         )
 
+        # Standard body text style
         self.body_style = ParagraphStyle(
             "ReportBody",
             parent=self.styles["Normal"],
@@ -60,6 +64,7 @@ class ReportGenerator:
             spaceAfter=6,
         )
 
+        # Bullet list item style with left indentation
         self.bullet_style = ParagraphStyle(
             "ReportBullet",
             parent=self.styles["Normal"],
@@ -70,10 +75,12 @@ class ReportGenerator:
             spaceAfter=4,
         )
 
+        # Initialize Flowable element story list
         self._story: list[Any] = []
         self._init_header()
 
     def _init_header(self) -> None:
+        """Add title and metadata header to the document story."""
         run_id = self.context.get("run_id", "run")
         mission = self.context.get("mission")
         mission_name = mission.display_name if mission else "Standard Navigation"
@@ -91,6 +98,7 @@ class ReportGenerator:
 
         if layout_image is not None and isinstance(layout_image, np.ndarray):
             try:
+                # Save temp file for ReportLab Image Flowable constructor
                 temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
                 pil_img = PILImage.fromarray(layout_image.astype(np.uint8))
                 pil_img.save(temp_file.name)
@@ -110,6 +118,7 @@ class ReportGenerator:
 
         if grid is not None and isinstance(grid, np.ndarray):
             annotation = self.context.get("annotation")
+            # Generate RGB visualization of annotated grid
             rgb_preview = GridExtractor().visualize_grid(grid, annotation)
 
             temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
@@ -141,6 +150,7 @@ class ReportGenerator:
         run_id = self.context.get("run_id", "run")
 
         if grid is not None and logger is not None:
+            # Export and append each heatmap type trace
             for heatmap_type in HEATMAP_TYPES:
                 try:
                     fig = HEATMAP_RENDERERS[heatmap_type](grid, logger)
@@ -161,6 +171,7 @@ class ReportGenerator:
         run_id = self.context.get("run_id", "run")
 
         if logger is not None and grid is not None:
+            # Export and append each performance chart trace
             for chart_type in CHART_TYPES:
                 try:
                     fig = CHART_RENDERERS[chart_type](logger, grid)
@@ -183,8 +194,9 @@ class ReportGenerator:
 
         cov_score = f"{getattr(report, 'coverage_score', 0.0):.2%}" if report else "N/A"
         is_hacking = getattr(report, "is_hacking_suspected", False) if report else False
-        hacking_verdict = "⚠️ SUSPECTED" if is_hacking else "✅ CLEAN RUN"
+        hacking_verdict = "SUSPECTED" if is_hacking else "CLEAN RUN"
 
+        # Format tabular metric data matrix
         table_data = [
             ["Metric", "Value"],
             ["Total Episodes Trained", str(total_ep)],
@@ -213,7 +225,7 @@ class ReportGenerator:
         """Add the Gemini-generated natural-language summary."""
         self._story.append(Paragraph("6. Gemini AI Natural Language Explanation", self.h2_style))
         summary_text = self.context.get("llm_summary") or "(No LLM summary generated for this run)"
-        # Convert newlines to breaks for ReportLab
+        # Convert newlines to break tags for ReportLab HTML rendering
         formatted_summary = summary_text.replace("\n", "<br/>")
         self._story.append(Paragraph(formatted_summary, self.body_style))
         self._story.append(Spacer(1, 10))
@@ -235,17 +247,19 @@ class ReportGenerator:
                 Paragraph("• Verify goal state termination logic to prevent infinite exploration loops.", self.bullet_style)
             )
 
-    def generate(self, output_path: Path) -> Path:
+    def generate(self, output_path: Path | str) -> Path:
         """Render the accumulated story to a PDF file at ``output_path``."""
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Construct A4 document template with 36pt (0.5 inch) page margins
         doc = SimpleDocTemplate(
-            str(output_path),
+            str(path),
             pagesize=A4,
             rightMargin=36,
             leftMargin=36,
             topMargin=36,
             bottomMargin=36,
         )
+        # Build PDF from accumulated Flowable story elements
         doc.build(self._story)
-        return output_path
-
+        return path

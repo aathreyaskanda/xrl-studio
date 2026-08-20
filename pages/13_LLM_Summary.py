@@ -5,12 +5,14 @@ import streamlit as st
 
 from reports.gemini_summary import build_prompt, generate_summary
 from utils.config import get_gemini_api_key, is_gemini_configured
-from utils.session_state import init_session_state, mark_step_complete, require_step
+from utils.session_state import init_session_state, mark_step_complete, require_step, safe_page_link
 
+# Initialize session state schema defaults
 init_session_state()
 
-st.title("🤖 LLM Summary")
+st.title("LLM Summary")
 
+# Guard page behind prerequisite explainability_dashboard step requirement
 if not require_step("explainability_dashboard"):
     st.stop()
 
@@ -32,6 +34,7 @@ logger = st.session_state.get("training_logs")
 episodes = logger.get_logs() if logger else []
 last_ep_reward = episodes[-1].total_reward if episodes else 0.0
 
+# Assemble context dictionary payload for LLM prompt template
 context = {
     "mission_name": mission.display_name if mission else "the mission",
     "metrics": {
@@ -49,8 +52,9 @@ with st.expander("Preview prompt sent to Gemini"):
 can_generate = is_gemini_configured()
 
 col_gen1, col_gen2 = st.columns(2)
+# Action 1: Call Gemini API for dynamic natural language summary
 with col_gen1:
-    if st.button("Generate Gemini Summary", type="primary", icon="🤖", disabled=not can_generate):
+    if st.button("Generate Gemini Summary", type="primary", icon=":material/smart_toy:", disabled=not can_generate):
         try:
             with st.spinner("Generating summary via Gemini Flash..."):
                 summary = generate_summary(context)
@@ -61,10 +65,11 @@ with col_gen1:
         except RuntimeError as error:
             st.error(str(error))
 
+# Action 2: Generate offline template summary if API key is not available
 with col_gen2:
-    if st.button("Generate Offline Summary", icon="📝"):
+    if st.button("Generate Offline Summary", icon=":material/description:"):
         is_hacked = context["metrics"]["is_hacking_suspected"]
-        verdict_str = "⚠️ REWARD HACKING SUSPECTED" if is_hacked else "✅ CLEAN RUN — NO REWARD HACKING"
+        verdict_str = "REWARD HACKING SUSPECTED" if is_hacked else "CLEAN RUN — NO REWARD HACKING"
         offline_summary = (
             f"### Automated Executive Summary: {context['mission_name']}\n\n"
             f"**Verdict:** {verdict_str}\n\n"
@@ -84,5 +89,4 @@ if st.session_state.get("llm_summary"):
     st.markdown("### Summary")
     st.write(st.session_state["llm_summary"])
     st.divider()
-    st.page_link("pages/14_Download_Report.py", label="Continue to Download Report", icon="📄")
-
+    safe_page_link("pages/14_Download_Report.py", label="Continue to Download Report", icon=":material/description:")

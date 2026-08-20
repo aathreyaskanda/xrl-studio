@@ -7,21 +7,34 @@ from analytics.loop_detection import detect_loops, loop_density_grid
 from analytics.reward_concentration import compute_reward_concentration
 from analytics.state_revisit import compute_state_revisit_frequency
 from rl.environment import OBSTACLE
-from utils.session_state import init_session_state, mark_step_complete, require_step
+from rl.training_logger import TrainingLogger
+from utils.session_state import init_session_state, mark_step_complete, require_step, safe_page_link
 
+# Initialize session state schema defaults
 init_session_state()
 
-st.title("🔍 Behaviour Analysis")
+st.title("Behaviour Analysis")
 
+# Guard page behind prerequisite training step requirement
 if not require_step("training"):
     st.stop()
 
-logger = st.session_state["training_logs"]
-grid = st.session_state["occupancy_grid"]
-navigable_count = int(np.count_nonzero(grid != OBSTACLE)) if grid is not None else grid.size
+logger = st.session_state.get("training_logs")
+grid = st.session_state.get("occupancy_grid")
+if logger is None or grid is None:
+    st.info("Training logs or grid not found. Please complete the previous steps first.")
+    st.stop()
+    # Fallbacks for bare importlib importing outside Streamlit runtime context
+    if logger is None:
+        logger = TrainingLogger()
+    if grid is None:
+        grid = np.zeros((1, 1), dtype=int)
 
+navigable_count = int(np.count_nonzero(grid != OBSTACLE))
+
+# 4 main tabs for analytics breakdown: Coverage, Loop Detection, Reward Concentration, State Revisit
 tab_coverage, tab_loops, tab_concentration, tab_revisit = st.tabs(
-    ["📊 Coverage", "🔄 Loop Detection", "⚖️ Reward Concentration", "🗺️ State Revisit"]
+    ["Coverage", "Loop Detection", "Reward Concentration", "State Revisit"]
 )
 
 with tab_coverage:
@@ -108,8 +121,7 @@ with tab_revisit:
     st.dataframe(pd.DataFrame(revisit_grid), use_container_width=True)
 
 st.divider()
-if st.button("Mark Behaviour Analysis Reviewed", type="primary", icon="🚨"):
+if st.button("Mark Behaviour Analysis Reviewed", type="primary", icon=":material/check_circle:"):
     mark_step_complete("behaviour_analysis")
     st.success("Marked complete.")
-    st.page_link("pages/11_Reward_Hacking_Detection.py", label="Continue to Reward Hacking Detection", icon="🚨")
-
+    safe_page_link("pages/11_Reward_Hacking_Detection.py", label="Continue to Reward Hacking Detection", icon=":material/report:")

@@ -25,11 +25,16 @@ _PREVIEW_CELL_SIZE_PX = 20
 class GridExtractionConfig:
     """Parameters controlling how an image is converted into an occupancy grid."""
 
+    # Target occupancy grid dimensions
     grid_rows: int = 20
     grid_cols: int = 20
+    # Binary intensity cutoff threshold (0-255)
     binary_threshold: int = 127
+    # Gaussian blur kernel dimension (odd integer) for smoothing noise
     blur_kernel_size: int = 5
+    # Controls whether dark or light pixels represent obstacle walls
     invert: bool = False
+    # Minimum fraction (0.0 to 1.0) of occupied pixels needed to classify a cell as an obstacle
     occupancy_vote_threshold: float = 0.5
 
 
@@ -53,15 +58,25 @@ class GridExtractor:
             input, where 255 marks "occupied" pixels.
         """
         config = self.config
+        # Convert RGB image matrix to single-channel grayscale (0=black, 255=white)
         grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
+        # Enforce odd kernel dimension for Gaussian blur (cv2 requires odd kernel size)
         kernel_size = max(1, config.blur_kernel_size)
         if kernel_size % 2 == 0:
-            kernel_size += 1  # cv2.GaussianBlur requires an odd kernel size
+            kernel_size += 1
         blurred = cv2.GaussianBlur(grayscale, (kernel_size, kernel_size), 0)
 
-        # invert=False (default): dark pixels -> occupied (THRESH_BINARY_INV).
-        # invert=True: light pixels -> occupied (THRESH_BINARY).
+        # OpenCV Binarization Logic & Truth Table for the `invert` flag:
+        #
+        # +----------------+----------------------+--------------------+--------------------+
+        # | invert flag    | threshold_type       | Input pixel intensity | Output binary val |
+        # +----------------+----------------------+--------------------+--------------------+
+        # | False (default)| THRESH_BINARY_INV    | < threshold (dark) | 255 (occupied)     |
+        # | False (default)| THRESH_BINARY_INV    | > threshold (light)| 0 (free space)     |
+        # | True           | THRESH_BINARY        | > threshold (light)| 255 (occupied)     |
+        # | True           | THRESH_BINARY        | < threshold (dark) | 0 (free space)     |
+        # +----------------+----------------------+--------------------+--------------------+
         threshold_type = cv2.THRESH_BINARY if config.invert else cv2.THRESH_BINARY_INV
         _, binary = cv2.threshold(blurred, config.binary_threshold, 255, threshold_type)
         return binary
@@ -74,46 +89,64 @@ class GridExtractor:
             defined in ``rl.environment`` (``FREE`` / ``OBSTACLE``).
         """
         config = self.config
+        # Obtain binarized image matrix (255 = occupied, 0 = free)
         binary = self.preprocess(image)
         height, width = binary.shape
 
-        grid = np.zeros((config.grid_rows, config.grid_cols), dtype=int)  # FREE == 0
+        # Initialize output grid with FREE (0) values
+        grid = np.zeros((config.grid_rows, config.grid_cols), dtype=int)
+        # Compute exact pixel row/col boundaries for each grid cell using linspace
         row_edges = np.linspace(0, height, config.grid_rows + 1, dtype=int)
         col_edges = np.linspace(0, width, config.grid_cols + 1, dtype=int)
 
+        # Iterate over all cell coordinates (row, col)
         for row in range(config.grid_rows):
             for col in range(config.grid_cols):
+                # Slice sub-image block corresponding to current cell
                 cell = binary[row_edges[row]:row_edges[row + 1], col_edges[col]:col_edges[col + 1]]
                 if cell.size == 0:
                     continue
+                # Calculate ratio of non-zero (255) pixels to total pixels in cell block
                 occupied_fraction = float(np.count_nonzero(cell)) / cell.size
+                # Vote cell as OBSTACLE (1) if occupied fraction meets or exceeds threshold
                 if occupied_fraction >= config.occupancy_vote_threshold:
                     grid[row, col] = OBSTACLE
 
         return grid
 
-    def visualize_grid(self, grid: np.ndarray, annotation: AnnotationState | None = None) -> np.ndarray:
+    def visualize_grid(
+        self,
+        grid: np.ndarray,
+        annotation: AnnotationState | None = None,
+        cell_size: int = _PREVIEW_CELL_SIZE_PX,
+    ) -> np.ndarray:
         """Render the occupancy grid — optionally with annotations — as an RGB preview.
 
         Colors: white = free, slate = obstacle, emerald = start, red =
         goal, amber = hazard. Manually-added obstacle/hazard cells from
         ``annotation`` are painted even if absent from the base ``grid``.
         """
-        cell_size = _PREVIEW_CELL_SIZE_PX
+        # Ensure minimum pixel dimension for preview rendering sanity
+        cell_size = max(4, cell_size)
         rows, cols = grid.shape
+
+        # Create base canvas filled with white (free space color)
         preview = np.tile(_PREVIEW_COLORS["free"], (rows * cell_size, cols * cell_size, 1))
 
+        # Nested helper to paint a grid cell with a specific RGB color
         def paint(row: int, col: int, color: np.ndarray) -> None:
             if 0 <= row < rows and 0 <= col < cols:
                 r0, r1 = row * cell_size, (row + 1) * cell_size
                 c0, c1 = col * cell_size, (col + 1) * cell_size
                 preview[r0:r1, c0:c1] = color
 
+        # Paint base extracted obstacles
         for row in range(rows):
             for col in range(cols):
                 if grid[row, col] == OBSTACLE:
                     paint(row, col, _PREVIEW_COLORS["obstacle"])
 
+        # Layer user annotations (manual obstacles, hazards, start, goal) on top
         if annotation is not None:
             for cell in annotation.obstacle_cells:
                 paint(*cell, _PREVIEW_COLORS["obstacle"])

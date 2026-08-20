@@ -30,12 +30,14 @@ class TrainingLogger:
 
     def start_episode(self, episode: int) -> EpisodeLog:
         """Begin tracking a new episode and return its log entry."""
+        # Instantiates a fresh EpisodeLog container and appends to episode history list
         log_entry = EpisodeLog(episode=episode, total_reward=0.0, steps=0)
         self.episodes.append(log_entry)
         return log_entry
 
     def log_step(self, log_entry: EpisodeLog, state: int, action: int, reward: float) -> None:
         """Record a single environment step against an episode log."""
+        # Append state, action, and reward transition values to per-step lists
         log_entry.visited_states.append(state)
         log_entry.actions.append(action)
         log_entry.rewards.append(reward)
@@ -48,6 +50,7 @@ class TrainingLogger:
 
     def export_json(self, path: Path) -> Path:
         """Serialize all episode logs to a JSON file."""
+        # Convert dataclass instances to dict via vars() for JSON serialization
         payload = {"episodes": [vars(log) for log in self.episodes]}
         return save_json(payload, path)
 
@@ -55,6 +58,7 @@ class TrainingLogger:
         """Serialize per-episode summary metrics (episode, reward, steps) to CSV."""
         import pandas as pd
 
+        # Extract per-episode summary records for tabular pandas DataFrame export
         records = [
             {
                 "episode": ep.episode,

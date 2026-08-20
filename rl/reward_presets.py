@@ -14,16 +14,21 @@ from dataclasses import dataclass
 class RewardConfig:
     """Reward-shaping parameters consumed by ``rl.environment.GridWorldEnv``."""
 
+    # Positive reward granted upon stepping into goal cell
     goal_reward: float = 10.0
+    # Negative penalty applied every step to encourage shortest paths
     step_penalty: float = -0.05
+    # Negative penalty applied when colliding with wall or obstacle
     collision_penalty: float = -1.0
+    # Negative penalty applied when stepping on an already-visited cell in current episode
     revisit_penalty: float = -0.1
+    # Positive reward bonus granted when stepping on a newly explored cell
     coverage_bonus: float = 0.2
+    # Negative penalty applied when stepping into a hazard cell
     hazard_penalty: float = -2.0
 
 
-# Default presets, keyed by mission profile key. Values are placeholders to
-# be tuned once training is implemented — see PROJECT_PLAN.md, Phase 3.
+# Default presets, keyed by mission profile key.
 MISSION_REWARD_PRESETS: dict[str, RewardConfig] = {
     "warehouse_inspection": RewardConfig(goal_reward=10.0, coverage_bonus=0.3),
     "hospital_delivery": RewardConfig(goal_reward=15.0, collision_penalty=-2.0),

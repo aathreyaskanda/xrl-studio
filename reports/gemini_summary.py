@@ -6,7 +6,9 @@ from typing import Any
 
 from utils.config import get_gemini_api_key, is_gemini_configured
 
+# Preferred primary Gemini model name
 GEMINI_MODEL_NAME = "gemini-3.6-flash"
+# Model candidates fallback order list
 GEMINI_MODEL_FALLBACKS = [
     "gemini-3.6-flash",
     "gemini-3.5-flash",
@@ -31,6 +33,7 @@ Write a concise, plain-language summary covering:
 
 def build_prompt(context: dict[str, Any]) -> str:
     """Fill :data:`SUMMARY_PROMPT_TEMPLATE` from a run's analysis context."""
+    # Format metrics dictionary items into a bulleted list string
     metrics_block = "\n".join(f"- {key}: {value}" for key, value in context.get("metrics", {}).items())
     return SUMMARY_PROMPT_TEMPLATE.format(
         mission_name=context.get("mission_name", "the mission"),
@@ -51,6 +54,7 @@ def generate_summary(context: dict[str, Any]) -> str:
     Raises:
         RuntimeError: if no Gemini API key is configured or API call fails.
     """
+    # Guard against invocation without an active API key
     if not is_gemini_configured():
         raise RuntimeError(
             "No Gemini API key configured. Set GEMINI_API_KEY in "
@@ -59,6 +63,7 @@ def generate_summary(context: dict[str, Any]) -> str:
 
     import google.generativeai as genai
 
+    # Configure global API key
     api_key = get_gemini_api_key()
     genai.configure(api_key=api_key)
 
@@ -66,7 +71,7 @@ def generate_summary(context: dict[str, Any]) -> str:
 
     last_error: Exception | None = None
 
-    # Try preferred candidates
+    # Try preferred candidate model names sequentially
     for model_name in GEMINI_MODEL_FALLBACKS:
         try:
             model = genai.GenerativeModel(model_name)
@@ -77,7 +82,7 @@ def generate_summary(context: dict[str, Any]) -> str:
             last_error = error
             continue
 
-    # Fallback to dynamic model discovery if configured candidates fail
+    # Fallback to dynamic model discovery if configured static candidate list fails
     try:
         for m in genai.list_models():
             if "generateContent" in getattr(m, "supported_generation_methods", []):
@@ -94,5 +99,3 @@ def generate_summary(context: dict[str, Any]) -> str:
         pass
 
     raise RuntimeError(f"Gemini API request failed: {last_error}")
-
-

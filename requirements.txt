@@ -23,3 +23,7 @@ reportlab>=4.1
 # LLM summary (Gemini Flash)
 google-generativeai>=0.5
 python-dotenv>=1.0     # optional: load GEMINI_API_KEY from a local .env file
+
+# Interactive floor-plan editing
+streamlit-image-coordinates>=0.1.6
+

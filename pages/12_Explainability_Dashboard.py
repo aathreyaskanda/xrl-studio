@@ -5,37 +5,51 @@ import streamlit as st
 
 from analytics.state_revisit import compute_state_revisit_frequency
 from rl.environment import OBSTACLE
+from rl.training_logger import TrainingLogger
 
 from utils.constants import ACTIONS, CHART_TYPES, HEATMAP_TYPES
-from utils.session_state import init_session_state, mark_step_complete, require_step
+from utils.session_state import init_session_state, mark_step_complete, require_step, safe_page_link
 from visualization.charts import CHART_RENDERERS
 from visualization.heatmaps import HEATMAP_RENDERERS
 from visualization.policy_inspector import action_to_arrow, build_policy_table
 from visualization.trajectory_replay import TrajectoryReplay
 
+# Initialize session state schema defaults
 init_session_state()
 
-st.title("📊 Explainability Dashboard")
+st.title("Explainability Dashboard")
 
+# Guard page behind prerequisite hacking_detection step requirement
 if not require_step("hacking_detection"):
     st.stop()
 
-grid = st.session_state["occupancy_grid"]
-report = st.session_state["hacking_report"]
-logger = st.session_state["training_logs"]
+grid = st.session_state.get("occupancy_grid")
+report = st.session_state.get("hacking_report")
+logger = st.session_state.get("training_logs")
+if grid is None or logger is None:
+    st.info("Grid or training logs not found. Please complete training first.")
+    st.stop()
+    if grid is None:
+        grid = np.zeros((1, 1), dtype=int)
+    if logger is None:
+        logger = TrainingLogger()
 
+# Display alert banner if reward hacking was flagged in prior step
 if report is not None and getattr(report, "is_hacking_suspected", False):
-    st.warning("⚠️ Reward hacking was flagged for this run.")
+    st.warning("Reward hacking was flagged for this run.")
 
+# 4 main visualizer tabs: Heatmaps, Charts, Trajectory Replay, Policy Inspector
 heatmap_tab, chart_tab, replay_tab, policy_tab = st.tabs(
     ["Heatmaps", "Charts", "Trajectory Replay", "Policy Inspector"]
 )
 
+# Tab 1: 2D Heatmaps (Coverage, Reward, Visit Frequency, Exploit, Loop Density)
 with heatmap_tab:
     selected_heatmap = st.selectbox("Heatmap type", HEATMAP_TYPES, format_func=str.title)
     figure = HEATMAP_RENDERERS[selected_heatmap](grid, logger)
     st.plotly_chart(figure, use_container_width=True)
 
+# Tab 2: 1D Dynamics Charts
 with chart_tab:
     selected_chart = st.selectbox(
         "Chart type", CHART_TYPES, format_func=lambda value: value.replace("_", " ").title()
@@ -43,6 +57,7 @@ with chart_tab:
     figure = CHART_RENDERERS[selected_chart](logger, grid)
     st.plotly_chart(figure, use_container_width=True)
 
+# Tab 3: Interactive Trajectory Step Replay Scrubber
 with replay_tab:
     episodes = logger.get_logs()
     if not episodes:
@@ -96,6 +111,7 @@ with replay_tab:
             cum_reward = sum(selected_ep.rewards[:step])
             m4.metric("Cumulative Reward", f"{cum_reward:.2f}")
 
+# Tab 4: Tabular Q-Table & Policy Inspector
 with policy_tab:
     agent = st.session_state.get("trained_agent")
     if agent is None:
@@ -127,16 +143,14 @@ with policy_tab:
         st.dataframe(policy_df, use_container_width=True, hide_index=True)
 
         st.download_button(
-            "📥 Export Policy Table (CSV)",
+            "Export Policy Table (CSV)",
             data=policy_df.to_csv(index=False),
             file_name="policy_inspector_table.csv",
             mime="text/csv",
+            icon=":material/download:",
         )
 
-
-
 st.divider()
-if st.button("Continue to LLM Summary", type="primary", icon="🤖"):
+if st.button("Continue to LLM Summary", type="primary", icon=":material/smart_toy:"):
     mark_step_complete("explainability_dashboard")
-    st.page_link("pages/13_LLM_Summary.py", label="LLM Summary", icon="🤖")
-
+    safe_page_link("pages/13_LLM_Summary.py", label="LLM Summary", icon=":material/smart_toy:")

@@ -16,7 +16,9 @@ def export_png(figure: go.Figure, filename: str) -> Path:
     if not filename.endswith(".png"):
         filename = f"{filename}.png"
     path = EXPORTS_PNG_DIR / filename
+    # Ensure export directory tree exists
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Write image to disk via Kaleido engine
     figure.write_image(str(path))
     return path
 
@@ -27,6 +29,7 @@ def export_csv(dataframe: pd.DataFrame, filename: str) -> Path:
         filename = f"{filename}.csv"
     path = EXPORTS_CSV_DIR / filename
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Save CSV without integer DataFrame index column
     dataframe.to_csv(path, index=False)
     return path
 
@@ -36,6 +39,7 @@ def export_json(data: dict, filename: str) -> Path:
     if not filename.endswith(".json"):
         filename = f"{filename}.json"
     path = EXPORTS_JSON_DIR / filename
+    # Delegate to central save_json file I/O helper
     return save_json(data, path)
 
 
@@ -45,6 +49,6 @@ def export_pdf(report_bytes: bytes, filename: str) -> Path:
         filename = f"{filename}.pdf"
     path = EXPORTS_PDF_DIR / filename
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Write raw binary PDF data stream
     path.write_bytes(report_bytes)
     return path
-

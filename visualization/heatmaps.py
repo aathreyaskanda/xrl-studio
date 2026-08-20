@@ -23,6 +23,7 @@ def _create_heatmap_figure(
     """Helper to render a 2D matrix heatmap with grid overlay."""
     rows, cols = matrix.shape
 
+    # Construct custom hover text strings per cell specifying coordinates, value, or obstacle status
     hover_text = [
         [
             f"Row {r}, Col {c}<br>{'Obstacle' if grid[r, c] == OBSTACLE else f'{hover_label}: {matrix[r, c]:.2f}'}"
@@ -33,6 +34,7 @@ def _create_heatmap_figure(
 
     fig = go.Figure()
 
+    # Add primary 2D Heatmap trace
     fig.add_trace(
         go.Heatmap(
             z=matrix,
@@ -45,6 +47,7 @@ def _create_heatmap_figure(
         )
     )
 
+    # Overlay scatter markers ('x') indicating obstacle cells
     obs_y, obs_x = np.where(grid == OBSTACLE)
     if len(obs_x) > 0:
         fig.add_trace(
@@ -58,6 +61,7 @@ def _create_heatmap_figure(
             )
         )
 
+    # Apply layout defaults (inverted y-axis so row 0 is at top, matching image coordinates)
     fig.update_layout(
         title={"text": title, "x": 0.5, "xanchor": "center"},
         xaxis={"title": "Grid Column (x)", "dtick": max(1, cols // 10)},
@@ -71,6 +75,7 @@ def _create_heatmap_figure(
 
 def plot_coverage_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure:
     """Heatmap of which cells were covered during training."""
+    # Convert cell visit counts matrix to binary (0.0 or 1.0) coverage matrix
     visit_counts = compute_state_revisit_frequency(logger, grid.shape)
     coverage_matrix = (visit_counts > 0).astype(float)
     return _create_heatmap_figure(
@@ -80,6 +85,7 @@ def plot_coverage_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure
 
 def plot_reward_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure:
     """Heatmap of cumulative reward earned per cell."""
+    # Aggregate cumulative reward collected across all episodes per 2D cell coordinate
     reward_matrix = np.zeros(grid.shape, dtype=float)
     cols = grid.shape[1]
 
@@ -96,6 +102,7 @@ def plot_reward_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure:
 
 def plot_visit_frequency_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure:
     """Heatmap of raw visit counts per cell."""
+    # Compute raw state visit frequency matrix
     visit_matrix = compute_state_revisit_frequency(logger, grid.shape).astype(float)
     return _create_heatmap_figure(
         visit_matrix, grid, "State Visit Frequency Heatmap", "Plasma", "Visits", "Visit Count"
@@ -104,6 +111,7 @@ def plot_visit_frequency_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go
 
 def plot_exploit_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure:
     """Heatmap highlighting cells associated with reward exploitation."""
+    # Isolate only positive reward transitions to highlight reward exploitation hotspots
     exploit_matrix = np.zeros(grid.shape, dtype=float)
     cols = grid.shape[1]
 
@@ -121,6 +129,7 @@ def plot_exploit_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure:
 
 def plot_loop_density_heatmap(grid: np.ndarray, logger: TrainingLogger) -> go.Figure:
     """Heatmap of repeated-movement (loop) density per cell."""
+    # Compute loop repetition density matrix
     loop_grid = loop_density_grid(logger.get_logs(), grid.shape)
     return _create_heatmap_figure(
         loop_grid, grid, "Loop Density Heatmap", "YlOrRd", "Loop Repeats", "Loop Density"
@@ -138,4 +147,3 @@ HEATMAP_RENDERERS = {
 }
 
 assert set(HEATMAP_RENDERERS) == set(HEATMAP_TYPES), "Heatmap renderers must match HEATMAP_TYPES."
-
