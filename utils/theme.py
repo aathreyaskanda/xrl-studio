@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 THEME_KEY = "theme_mode"  # "dark" | "light"
 DEFAULT_THEME = "dark"
@@ -29,11 +30,11 @@ def inject_theme_css(css_path: str = "assets/styles/custom.css") -> None:
     except FileNotFoundError:
         css_content = ""
 
-    # Streamlit scoping trick: Inject theme root class and scope styles
-    theme_css = f"""
-    <style>
-    {css_content}
-    </style>
+    # Inject CSS stylesheet
+    st.markdown(f"<style>\n{css_content}\n</style>", unsafe_allow_html=True)
+
+    # Inject JavaScript theme switcher silently via component iframe
+    js_code = f"""
     <script>
     const el = window.parent.document.querySelector('.stApp');
     if (el) {{
@@ -41,4 +42,4 @@ def inject_theme_css(css_path: str = "assets/styles/custom.css") -> None:
     }}
     </script>
     """
-    st.markdown(theme_css, unsafe_allow_html=True)
+    components.html(js_code, height=0, width=0)
